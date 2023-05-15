@@ -1,0 +1,6 @@
+---
+- name: Install docker service
+  hosts: homelab
+  become: yes
+  roles:
+    - install-docker
