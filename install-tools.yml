@@ -1,0 +1,12 @@
+---
+- name: Install OS tools
+  hosts: homelab
+  become: yes
+  tasks:
+    - name: Install some helpful tools.
+      package:
+        name:
+          - vim
+          - htop
+          - powertop
+        state: present

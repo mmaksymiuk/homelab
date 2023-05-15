@@ -1,0 +1,10 @@
+---
+- name: Keep server up-to-date
+  hosts: homelab
+  become: yes
+  tasks:
+    - name: Update all packages to their latest version.
+      package:
+        name: "*"
+        update-cache: yes
+        state: latest
