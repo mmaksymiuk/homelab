@@ -1,0 +1,2 @@
+---
+compose_install_dir: /home/{{ ansible_user }}/compose

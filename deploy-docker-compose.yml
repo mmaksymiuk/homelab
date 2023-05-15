@@ -1,0 +1,28 @@
+---
+- name: Deploy docker compose
+  hosts: homelab
+
+  vars_files:
+    - compose-variables.yml
+    - secure-variables.yml
+
+  tasks:
+    - name: Create installation dir.
+      file:
+        path: "{{ compose_install_dir }}"
+        state: directory
+        mode: '0755'
+    - name: Copy docker compose file.
+      template:
+        src: docker-compose.yml.j2
+        dest: "{{ compose_install_dir }}/docker-compose.yml"
+#    - name: Tear down existing services
+#      docker_compose:
+#        project_src: "{{ compose_install_dir }}"
+#        state: absent
+#      become: yes
+    - name: Start services
+      docker_compose:
+        project_src: "{{ compose_install_dir }}"
+        state: present
+      become: yes

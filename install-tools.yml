@@ -9,4 +9,6 @@
           - vim
           - htop
           - powertop
+          - docker-compose
+          - python3-docker
         state: present
