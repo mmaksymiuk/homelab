@@ -14,6 +14,7 @@
         remove_volumes: true
       become: yes
       when: compose_remove_services | bool
+
     - name: Tear down data dirs.
       file:
         path: "{{ item }}"
@@ -27,11 +28,13 @@
         - "{{ compose_mqtt_data_dir }}/data"
       become: yes
       when: compose_remove_services | bool
+
     - name: Create installation dir.
       file:
         path: "{{ compose_install_dir }}"
         state: directory
         mode: '0755'
+
     - name: Create data dirs.
       file:
         path: "{{ item }}"
@@ -45,19 +48,24 @@
         - "{{ compose_mqtt_data_dir }}/log"
         - "{{ compose_mqtt_data_dir }}/data"
       ignore_errors: true
+
     - name: Copy docker compose file.
       template:
         src: docker-compose.yml.j2
         dest: "{{ compose_install_dir }}/docker-compose.yml"
+
     - name: Copy mosquitto configuration file.
       copy:
         src: ./files/mosquitto.conf
         dest: "{{ compose_mqtt_data_dir }}/config/mosquitto.conf"
+        force: no
 
     - name: Copy mosquitto password file.
       template:
         src: ./files/mosquitto_users.j2
         dest: "{{ compose_mqtt_data_dir }}/config/mosquitto_users"
+        force: no
+      register: mosquittousers
 
     - name: Start services
       docker_compose:
@@ -70,6 +78,12 @@
         container: "mosquitto"
         command: "mosquitto_passwd -U /mosquitto/config/mosquitto_users"
       become: yes
-      register: output
-    - debug:
-        var: output
+      when: mosquittousers.changed
+
+    - name: Restart mosquitto a container.
+      community.docker.docker_container:
+        name: "mosquitto"
+        state: started
+        restart: true
+      become: yes
+      when: mosquittousers.changed

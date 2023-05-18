@@ -1,6 +1,6 @@
 ---
 compose_install_dir: /home/{{ ansible_user }}/compose
-compose_remove_services: yes
+compose_remove_services: no
 compose_pihole_data_dir: /home/{{ ansible_user }}/pihole-data
 compose_ha_data_dir: /home/{{ ansible_user }}/ha-data
 compose_mqtt_data_dir: /home/{{ ansible_user }}/mqtt-data
