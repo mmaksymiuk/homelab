@@ -39,3 +39,4 @@ services:
       - "{{ compose_mqtt_data_dir }}/config:/mosquitto/config/"
       - "{{ compose_mqtt_data_dir }}/log:/mosquitto/log/"
       - "{{ compose_mqtt_data_dir }}/data:/mosquitto/data/"
+    restart: unless-stopped
