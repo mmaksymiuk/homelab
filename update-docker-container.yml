@@ -12,10 +12,30 @@
         src: docker-compose.yml.j2
         dest: "{{ compose_install_dir }}/docker-compose.yml"
 
+    - name: Getter facts about working containers
+      community.docker.docker_compose:
+        project_src: "{{ compose_install_dir }}"
+        state: present
+      become: yes
+      register: before_update
+
+    - name: Show versions
+      ansible.builtin.debug:
+        msg:
+          - "HASS version: {{ before_update.services.homeassistant.homeassistant.labels['io.hass.version'] }}"
+          - "Pihole version: {{ before_update.services.pihole.pihole.labels['org.opencontainers.image.version'] }}"
+
     - name: Pull latest images
-      docker_compose:
+      community.docker.docker_compose:
         project_src: "{{ compose_install_dir }}"
         state: present
         pull: true
         recreate: smart
       become: yes
+      register: after_update
+
+    - name: Show update results
+      ansible.builtin.debug:
+        msg:
+         - "HASS version: {{ after_update.services.homeassistant.homeassistant.labels['io.hass.version'] }}"
+         - "Pihole version: {{ after_update.services.pihole.pihole.labels['org.opencontainers.image.version'] }}"
