@@ -29,5 +29,5 @@ Will not work for WSL2 and files in windows filesystem.
 
 Pull latest docker images and recreate containers.
 ```shell
-ansible-playbook -i inventory --ask-vault-pass deploy-docker-compose.yml
+ansible-playbook -i inventory --ask-vault-pass update-docker-container.yml
 ```
