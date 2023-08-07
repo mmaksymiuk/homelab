@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo "$(date): " | tee -a {{ duckdns_log_file }}
+url='https://www.duckdns.org/update?domains={{ duckdns_domain }}&token={{ duckdns_token }}&ip='
+curl $url | tee -a {{ duckdns_log_file }}
+echo '\n' | tee -a {{ duckdns_log_file }}

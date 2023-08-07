@@ -1,0 +1,35 @@
+---
+- name: Configure duckdns cron
+  hosts: homelab
+
+  vars:
+    duckdns_install_dir: "/home/{{ ansible_user }}/duckdns"
+    duckdns_script_file: "{{ duckdns_install_dir }}/duck_job.sh"
+    duckdns_log_file: "{{ duckdns_install_dir }}/duck.log"
+    duckdns_cron_minutes: 5
+
+  vars_files:
+    - secure-variables.yml
+
+  tasks:
+    - name: Create duckdns directory
+      ansible.builtin.file:
+        path: "{{ duckdns_install_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create cron script
+      template:
+        src: dns_update.sh.j2
+        dest: "{{ duckdns_script_file }}"
+
+    - name: Ensure duck script is executable
+      ansible.builtin.file:
+        path: "{{ duckdns_script_file }}"
+        mode: '0700'
+
+    - name: "Ensure duck dns script is executed each {{ duckdns_cron_minutes }} minutes"
+      ansible.builtin.cron:
+        name: "Update duck dns"
+        minute: "*/{{ duckdns_cron_minutes }}"
+        job: "sh {{ duckdns_script_file }} >/dev/null 2>&1"
