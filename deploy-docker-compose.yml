@@ -8,7 +8,7 @@
 
   tasks:
     - name: Tear down existing services.
-      docker_compose:
+      community.docker.docker_compose:
         project_src: "{{ compose_install_dir }}"
         state: absent
         remove_volumes: true
@@ -62,13 +62,13 @@
 
     - name: Copy mosquitto password file.
       template:
-        src: ./files/mosquitto_users.j2
+        src: ./templates/mosquitto_users.j2
         dest: "{{ compose_mqtt_data_dir }}/config/mosquitto_users"
         force: no
       register: mosquittousers
 
     - name: Start services
-      docker_compose:
+      community.docker.docker_compose:
         project_src: "{{ compose_install_dir }}"
         state: present
       become: yes
