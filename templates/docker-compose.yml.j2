@@ -1,4 +1,4 @@
-version: '3'
+version: '3.9'
 services:
 
   pihole:
@@ -40,3 +40,24 @@ services:
       - "{{ compose_mqtt_data_dir }}/log:/mosquitto/log/"
       - "{{ compose_mqtt_data_dir }}/data:/mosquitto/data/"
     restart: unless-stopped
+  wg-easy:
+    environment:
+      - WG_HOST={{ duckdns_domain }}
+      - PASSWORD={{ compose_wg_web_pass }}
+      # 💡 This is the Pi-Hole Container's IP Address
+      - WG_DEFAULT_DNS=10.8.1.3
+      - WG_DEFAULT_ADDRESS=10.8.0.x
+    image: ghcr.io/wg-easy/wg-easy
+    container_name: wg-easy
+    volumes:
+      - {{ compose_wg_data_dir }}/.wg-easy:/etc/wireguard
+    ports:
+      - "{{ compose_wg_udp_port }}:51820/udp"
+      - "{{ compose_wg_tcp_port }}:51821/tcp"
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1

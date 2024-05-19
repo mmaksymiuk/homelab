@@ -1,6 +1,6 @@
 ---
 - name: Update all docker compose images
-  hosts: homelab
+  hosts: docker
 
   vars_files:
     - compose-variables.yml

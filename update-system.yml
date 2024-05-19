@@ -1,6 +1,6 @@
 ---
 - name: Keep server up-to-date
-  hosts: homelab
+  hosts: [omv, docker]
   become: yes
   tasks:
     - name: Update all packages to their latest version.
