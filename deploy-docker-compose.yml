@@ -1,6 +1,6 @@
 ---
 - name: Deploy docker compose
-  hosts: homelab
+  hosts: docker
 
   vars_files:
     - compose-variables.yml
