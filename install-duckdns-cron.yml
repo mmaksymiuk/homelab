@@ -1,6 +1,6 @@
 ---
 - name: Configure duckdns cron
-  hosts: homelab
+  hosts: all
 
   vars:
     duckdns_install_dir: "/home/{{ ansible_user }}/duckdns"

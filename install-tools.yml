@@ -1,6 +1,6 @@
 ---
 - name: Install OS tools
-  hosts: homelab
+  hosts: all
   become: yes
   tasks:
     - name: Install some helpful tools.

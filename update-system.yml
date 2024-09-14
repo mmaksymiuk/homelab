@@ -1,6 +1,6 @@
 ---
 - name: Keep server up-to-date
-  hosts: [omv, docker]
+  hosts: all
   become: yes
   tasks:
     - name: Update all packages to their latest version.
