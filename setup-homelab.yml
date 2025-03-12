@@ -51,7 +51,7 @@
 
     - name: Copy docker compose file.
       template:
-        src: homelab-docker-compose.yml.j2
+        src: homelab-compose.yml.j2
         dest: "{{ compose_install_dir }}/docker-compose.yml"
 
     - name: Copy mosquitto configuration file.

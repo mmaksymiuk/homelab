@@ -1,0 +1,18 @@
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        alias {{ nginx_web_dir }}/;
+        try_files $uri /index.html;
+    }
+
+    location /secured/ {
+        alias {{ nginx_media_dir }}/;
+        autoindex on;
+        autoindex_exact_size off;
+
+        auth_basic "YOU SHALL NOT PASS";
+        auth_basic_user_file {{ nginx_passwd_file }};
+    }
+}
