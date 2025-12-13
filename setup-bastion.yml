@@ -51,6 +51,7 @@
         name: nginx
         image: docker.io/nginx:stable-alpine-perl
         state: created
+        pull: always
         recreate: true
         hostname: bastion-nginx
         volumes:
@@ -69,6 +70,7 @@
         name: cloudflare
         image: docker.io/cloudflare/cloudflared:latest
         state: created
+        pull: always
         command: "tunnel --no-autoupdate run --token {{ cloudflare_bastion_token }}"
         hostname: bastion-cloudflare
         label:

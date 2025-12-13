@@ -1,3 +1,5 @@
 /.idea/
 /inventory
 /vault-pass-key
+anskey
+inventory*.yml
