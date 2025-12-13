@@ -47,11 +47,12 @@
         - "{{ compose_mqtt_data_dir }}/config"
         - "{{ compose_mqtt_data_dir }}/log"
         - "{{ compose_mqtt_data_dir }}/data"
+        - "{{ compose_zigbee2mqtt_data_dir }}/data"
       ignore_errors: true
 
     - name: Copy docker compose file.
       template:
-        src: homelab-docker-compose.yml.j2
+        src: homelab-compose.yml.j2
         dest: "{{ compose_install_dir }}/docker-compose.yml"
 
     - name: Copy mosquitto configuration file.
@@ -64,8 +65,9 @@
       template:
         src: ./templates/mosquitto_users.j2
         dest: "{{ compose_mqtt_data_dir }}/config/mosquitto_users"
-        force: no
+        force: false
       register: mosquittousers
+      become: true
 
     - name: Start services
       community.docker.docker_compose:
