@@ -5,12 +5,13 @@ Automated homelab setup using Ansible and Docker for Debian servers.
 ## Quick Start
 
 ```bash
-# 1. Bootstrap server (run ON THE SERVER as your existing user, e.g., maxu)
-# This configures sudo access for your user
-curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
+# 1. Bootstrap server (run ON THE SERVER as root first time)
+# This installs sudo and configures your user
+curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | sudo bash
 
-# Or manually:
-# cd scripts && bash bootstrap.sh
+# Or if you don't have sudo yet, run as root:
+# su -
+# curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
 
 # 2. Copy SSH key from YOUR LOCAL MACHINE (will prompt for password)
 # Replace 'maxu' with your actual username if different

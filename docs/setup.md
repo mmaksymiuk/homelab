@@ -23,21 +23,26 @@ Complete Ansible-based homelab infrastructure for Debian servers with Docker con
 
 ### 1. Initial Server Setup
 
-**Run these commands ON YOUR DEBIAN SERVER** as your existing user (e.g., maxu):
+**Run these commands ON YOUR DEBIAN SERVER** as root (first time only):
 
 ```bash
-# Download and run bootstrap script
-# This sets up sudo access for your user without password
+# Download and run bootstrap script as root
+# This installs sudo and configures your user
 curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
 
-# Or manually run the local script:
+# Or manually run the local script as root:
 cd scripts && bash bootstrap.sh
 ```
 
 The bootstrap script will:
+- Install sudo (if not present)
 - Update system packages
-- Install essential tools (python3, sudo, etc.)
+- Install essential tools (python3, openssh-server, etc.)
+- Create/configure your user (default: maxu)
 - Configure passwordless sudo for your user
+- Set up SSH key directory
+
+**Note:** If your user already exists, it will just configure sudo. If not, it will create the user and prompt for a password.
 
 ### 2. Configure Inventory
 
