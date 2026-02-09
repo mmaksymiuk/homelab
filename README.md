@@ -5,31 +5,37 @@ Automated homelab setup using Ansible and Docker for Debian servers.
 ## Quick Start
 
 ```bash
-# 1. Bootstrap server (run ON THE SERVER as root first time)
-# This installs sudo and configures your user
-curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | sudo bash
+# BOOTSTRAP - Run this script TWICE on the server:
 
-# Or if you don't have sudo yet, run as root:
-# su -
-# curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
+# === PHASE 1: Run as ROOT ===
+su -
+curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
+# This will install sudo and create/configure your user
+# When done, it will tell you to run again as the user
 
-# 2. Copy SSH key from YOUR LOCAL MACHINE (will prompt for password)
-# Replace 'maxu' with your actual username if different
+# === PHASE 2: Run as USER ===
+# Logout and SSH back in as your user (e.g., maxu), then run:
+bash bootstrap.sh
+# This completes the setup
+
+# === From your LOCAL MACHINE ===
+
+# 1. Copy your SSH key (will prompt for password)
 ssh-copy-id -i ~/.ssh/id_rsa.pub maxu@your-server-ip
 
-# 3. Test SSH key works (should NOT ask for password)
+# 2. Test SSH key works (should NOT ask for password)
 ssh maxu@your-server-ip
 
-# 4. Update inventory with your username and server IP
+# 3. Update inventory with your username and server IP
 vim inventory/production/hosts.yml
 # Change: ansible_user: maxu
 # Change: ansible_host: your-server-ip
 
-# 5. Configure secrets on YOUR LOCAL MACHINE
+# 4. Configure secrets on YOUR LOCAL MACHINE
 cp templates/configs/.env.j2 files/docker-compose/.env
 vim files/docker-compose/.env  # Add your credentials
 
-# 6. Deploy everything (SSH password auth will be disabled!)
+# 5. Deploy everything (SSH password auth will be disabled!)
 ansible-playbook -i inventory/production playbooks/site.yml
 ansible-playbook -i inventory/production playbooks/deploy-containers.yml
 ```
@@ -76,6 +82,31 @@ See [docs/setup.md](docs/setup.md) for complete documentation.
 ├── templates/
 ├── docs/
 └── scripts/
+```
+
+## Troubleshooting
+
+### Sudo password required
+
+If you get prompted for a password when running Ansible, the bootstrap didn't complete properly. Fix it by running the script again:
+
+```bash
+# Phase 1: As root
+su -
+bash bootstrap.sh
+
+# Then Phase 2: As user
+exit
+ssh maxu@your-server-ip
+bash bootstrap.sh
+```
+
+Or manually fix sudo:
+```bash
+# On the Debian server, run as root:
+echo "maxu ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/maxu
+chmod 0440 /etc/sudoers.d/maxu
+visudo -c  # Verify syntax
 ```
 
 ## License

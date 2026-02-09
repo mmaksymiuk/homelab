@@ -23,26 +23,50 @@ Complete Ansible-based homelab infrastructure for Debian servers with Docker con
 
 ### 1. Initial Server Setup
 
-**Run these commands ON YOUR DEBIAN SERVER** as root (first time only):
+The bootstrap script runs in **two phases**. Run it twice on your Debian server:
+
+#### Phase 1: Run as ROOT (first time only)
 
 ```bash
-# Download and run bootstrap script as root
-# This installs sudo and configures your user
+# Become root
+su -
+
+# Download and run bootstrap script
 curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
 
-# Or manually run the local script as root:
-cd scripts && bash bootstrap.sh
+# Or if you have the script locally:
+# cd scripts && bash bootstrap.sh
 ```
 
-The bootstrap script will:
-- Install sudo (if not present)
-- Update system packages
-- Install essential tools (python3, openssh-server, etc.)
-- Create/configure your user (default: maxu)
-- Configure passwordless sudo for your user
-- Set up SSH key directory
+**What Phase 1 does:**
+- Installs sudo
+- Updates system packages
+- Installs essential tools (python3, openssh-server, etc.)
+- Creates/configures your user (default: maxu)
+- Configures passwordless sudo for your user
 
-**Note:** If your user already exists, it will just configure sudo. If not, it will create the user and prompt for a password.
+**When Phase 1 completes, it will tell you to run the script again as your user.**
+
+#### Phase 2: Run as USER
+
+After Phase 1 completes:
+
+```bash
+# Logout from root and SSH back in as your user
+exit
+ssh maxu@your-server-ip
+
+# Now run bootstrap again as the user
+bash bootstrap.sh
+```
+
+**What Phase 2 does:**
+- Verifies passwordless sudo is working
+- Updates system packages
+- Creates SSH directory
+- Completes the bootstrap process
+
+**The script automatically detects which phase to run based on whether you're root or a regular user.**
 
 ### 2. Configure Inventory
 
