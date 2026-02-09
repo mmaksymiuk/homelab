@@ -1,0 +1,25 @@
+---
+- name: Install Cockpit and modules
+  ansible.builtin.apt:
+    name:
+      - cockpit
+      - cockpit-pcp
+      - cockpit-packagekit
+      - cockpit-storaged
+      - cockpit-networkmanager
+      - cockpit-system
+    state: present
+    update_cache: true
+
+- name: Configure Cockpit
+  ansible.builtin.template:
+    src: cockpit.conf.j2
+    dest: /etc/cockpit/cockpit.conf
+    mode: '0644'
+  notify: Restart Cockpit
+
+- name: Ensure Cockpit is running
+  ansible.builtin.service:
+    name: cockpit.socket
+    state: started
+    enabled: true

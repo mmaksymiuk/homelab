@@ -1,0 +1,53 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - vim
+      - nano
+      - htop
+      - iotop
+      - iftop
+      - net-tools
+      - dnsutils
+      - curl
+      - wget
+      - git
+      - unzip
+      - jq
+      - tree
+      - ncdu
+      - rsync
+      - cron
+      - logrotate
+      - tmux
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - software-properties-common
+    state: present
+
+- name: Set timezone
+  ansible.builtin.timezone:
+    name: "{{ timezone | default('UTC') }}"
+
+- name: Configure locale
+  ansible.builtin.locale_gen:
+    name: "{{ locale | default('en_US.UTF-8') }}"
+    state: present
+
+- name: Set default locale
+  ansible.builtin.template:
+    src: locale.j2
+    dest: /etc/default/locale
+    mode: '0644'
+
+- name: Configure logrotate
+  ansible.builtin.template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.conf
+    mode: '0644'

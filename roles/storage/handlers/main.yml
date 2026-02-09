@@ -1,0 +1,10 @@
+---
+- name: Restart hdparm
+  ansible.builtin.service:
+    name: hdparm
+    state: restarted
+
+- name: Restart smartd
+  ansible.builtin.service:
+    name: smartd
+    state: restarted

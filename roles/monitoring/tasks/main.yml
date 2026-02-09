@@ -1,0 +1,38 @@
+---
+- name: Create Prometheus configuration
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ mount_points.performance }}/docker/volumes/prometheus/prometheus.yml"
+    mode: '0644'
+
+- name: Create Grafana provisioning directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ mount_points.performance }}/docker/volumes/grafana/provisioning/datasources"
+    - "{{ mount_points.performance }}/docker/volumes/grafana/provisioning/dashboards"
+    - "{{ mount_points.performance }}/docker/volumes/grafana/dashboards"
+
+- name: Configure Grafana datasources
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: "{{ mount_points.performance }}/docker/volumes/grafana/provisioning/datasources/datasources.yml"
+    mode: '0644'
+
+- name: Configure Grafana dashboards
+  ansible.builtin.template:
+    src: dashboards.yml.j2
+    dest: "{{ mount_points.performance }}/docker/volumes/grafana/provisioning/dashboards/dashboards.yml"
+    mode: '0644'
+
+- name: Download Grafana dashboards
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "{{ mount_points.performance }}/docker/volumes/grafana/dashboards/{{ item.name }}"
+    mode: '0644'
+  loop:
+    - { name: 'node-exporter.json', url: 'https://raw.githubusercontent.com/rfrail3/grafana-dashboards/master/prometheus/node-exporter-full.json' }
+    - { name: 'docker-monitoring.json', url: 'https://raw.githubusercontent.com/vegasbrianc/prometheus/master/dashboards/Docker_Monitoring.json' }
+  ignore_errors: true

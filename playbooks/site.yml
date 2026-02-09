@@ -1,0 +1,33 @@
+---
+# Main site playbook for homelab server
+# Run: ansible-playbook -i inventory/production playbooks/site.yml
+
+- name: Configure Homelab Server
+  hosts: homelab
+  become: true
+  gather_facts: true
+  
+  roles:
+    - role: common
+      tags: ['common', 'base']
+    
+    - role: security
+      tags: ['security', 'base']
+    
+    - role: storage
+      tags: ['storage', 'base']
+    
+    - role: docker
+      tags: ['docker', 'containers']
+    
+    - role: cockpit
+      tags: ['cockpit', 'management']
+  
+  post_tasks:
+    - name: Display server info
+      ansible.builtin.debug:
+        msg:
+          - "Server configuration complete!"
+          - "Cockpit available at: https://{{ ansible_host }}:9090"
+          - "Docker root: {{ mount_points.performance }}/docker"
+          - "Media storage: {{ mount_points.media }}"

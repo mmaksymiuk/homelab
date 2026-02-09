@@ -1,0 +1,34 @@
+[DEFAULT]
+# Ban hosts for 1 hour
+bantime = 3600
+findtime = 600
+maxretry = 5
+backend = systemd
+
+# Email notifications (optional)
+# destemail = admin@example.com
+# sender = fail2ban@example.com
+# mta = sendmail
+
+# Actions
+action = %(action_)s
+
+[sshd]
+enabled = true
+port = {{ ssh_port | default(22) }}
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 3600
+
+[nginx-http-auth]
+enabled = true
+filter = nginx-http-auth
+port = http,https
+logpath = /var/log/nginx/error.log
+
+[traefik-auth]
+enabled = true
+filter = traefik-auth
+port = http,https
+logpath = /var/log/traefik/access.log

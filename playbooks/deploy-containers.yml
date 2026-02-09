@@ -1,0 +1,81 @@
+---
+# Deploy container services
+# Run: ansible-playbook -i inventory/production playbooks/deploy-containers.yml
+
+- name: Deploy Container Services
+  hosts: homelab
+  become: true
+  gather_facts: true
+  
+  vars:
+    compose_dir: "{{ mount_points.performance }}/docker/compose"
+  
+  tasks:
+    - name: Ensure compose directory exists
+      ansible.builtin.file:
+        path: "{{ compose_dir }}"
+        state: directory
+        mode: '0755'
+    
+    - name: Copy Docker Compose files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/docker-compose/{{ item }}"
+        dest: "{{ compose_dir }}/{{ item }}"
+        mode: '0644'
+      loop:
+        - docker-compose.yml
+        - docker-compose.monitoring.yml
+        - docker-compose.home.yml
+    
+    - name: Copy environment files
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/configs/{{ item }}.j2"
+        dest: "{{ compose_dir }}/{{ item }}"
+        mode: '0600'
+      loop:
+        - .env
+      no_log: true
+    
+    - name: Create service data directories
+      ansible.builtin.file:
+        path: "{{ mount_points.performance }}/docker/volumes/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - traefik
+        - pihole
+        - jellyfin
+        - homeassistant
+        - mosquitto
+        - zigbee2mqtt
+        - grafana
+        - prometheus
+        - influxdb
+        - cloudflared
+    
+    - name: Deploy Traefik and core services
+      community.docker.docker_compose:
+        project_src: "{{ compose_dir }}"
+        files:
+          - docker-compose.yml
+        state: present
+        pull: true
+      tags: ['core']
+    
+    - name: Deploy monitoring stack
+      community.docker.docker_compose:
+        project_src: "{{ compose_dir }}"
+        files:
+          - docker-compose.monitoring.yml
+        state: present
+        pull: true
+      tags: ['monitoring']
+    
+    - name: Deploy Home Assistant stack
+      community.docker.docker_compose:
+        project_src: "{{ compose_dir }}"
+        files:
+          - docker-compose.home.yml
+        state: present
+        pull: true
+      tags: ['home']

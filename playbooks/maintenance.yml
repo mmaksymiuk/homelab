@@ -1,0 +1,48 @@
+---
+# Maintenance playbook
+# Run: ansible-playbook -i inventory/production playbooks/maintenance.yml
+
+- name: Server Maintenance
+  hosts: homelab
+  become: true
+  gather_facts: true
+  
+  tasks:
+    - name: Update apt packages
+      ansible.builtin.apt:
+        upgrade: safe
+        update_cache: true
+        cache_valid_time: 3600
+      tags: ['updates']
+    
+    - name: Clean apt cache
+      ansible.builtin.apt:
+        autoclean: true
+      tags: ['cleanup']
+    
+    - name: Remove unused packages
+      ansible.builtin.apt:
+        autoremove: true
+      tags: ['cleanup']
+    
+    - name: Prune Docker images
+      community.docker.docker_prune:
+        containers: true
+        images: true
+        images_filters:
+          dangling: true
+        networks: true
+        volumes: false
+        builder_cache: true
+      tags: ['docker-cleanup']
+    
+    - name: Check disk space
+      ansible.builtin.command: df -h
+      register: disk_space
+      changed_when: false
+      tags: ['check']
+    
+    - name: Display disk space
+      ansible.builtin.debug:
+        var: disk_space.stdout_lines
+      tags: ['check']

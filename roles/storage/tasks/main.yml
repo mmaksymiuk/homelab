@@ -1,0 +1,119 @@
+---
+- name: Install storage utilities
+  ansible.builtin.apt:
+    name:
+      - hdparm
+      - smartmontools
+      - nvme-cli
+      - parted
+      - xfsprogs
+      - e2fsprogs
+    state: present
+    update_cache: true
+
+- name: Create mount points
+  ansible.builtin.file:
+    path: "{{ item.value }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ mount_points | dict2items }}"
+
+- name: Install performance NVMe (noatime for better performance)
+  ansible.posix.mount:
+    path: "{{ mount_points.performance }}"
+    src: "{{ storage_config.nvme_performance }}"
+    fstype: xfs
+    opts: noatime,nodiratime
+    state: mounted
+  when: storage_config.nvme_performance is defined
+
+- name: Install metadata SSD (noatime for better performance)
+  ansible.posix.mount:
+    path: "{{ mount_points.metadata }}"
+    src: "{{ storage_config.sata_metadata }}"
+    fstype: xfs
+    opts: noatime,nodiratime
+    state: mounted
+  when: storage_config.sata_metadata is defined
+
+- name: Install media HDD (relatime for balance)
+  ansible.posix.mount:
+    path: "{{ mount_points.media }}"
+    src: "{{ storage_config.hdd_media }}"
+    fstype: xfs
+    opts: relatime
+    state: mounted
+  when: storage_config.hdd_media is defined
+
+- name: Install backup HDD 1 (relatime for balance)
+  ansible.posix.mount:
+    path: "{{ mount_points.backups }}"
+    src: "{{ storage_config.hdd_backup_1 }}"
+    fstype: xfs
+    opts: relatime
+    state: mounted
+  when: storage_config.hdd_backup_1 is defined
+
+- name: Install backup HDD 2 (relatime for balance, separate subdir)
+  ansible.posix.mount:
+    path: "{{ mount_points.backups }}/disk2"
+    src: "{{ storage_config.hdd_backup_2 }}"
+    fstype: xfs
+    opts: relatime
+    state: mounted
+  when: storage_config.hdd_backup_2 is defined
+
+- name: Configure disk spin-down for HDDs
+  ansible.builtin.template:
+    src: hdparm.conf.j2
+    dest: /etc/hdparm.conf
+    mode: '0644'
+  notify: Restart hdparm
+
+- name: Enable hdparm service
+  ansible.builtin.service:
+    name: hdparm
+    enabled: true
+    state: started
+
+- name: Configure smartd for disk monitoring
+  ansible.builtin.template:
+    src: smartd.conf.j2
+    dest: /etc/smartd.conf
+    mode: '0644'
+  notify: Restart smartd
+
+- name: Enable smartd service
+  ansible.builtin.service:
+    name: smartd
+    enabled: true
+    state: started
+
+- name: Create Docker directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ mount_points.performance }}/docker"
+    - "{{ mount_points.performance }}/docker/volumes"
+    - "{{ mount_points.metadata }}/jellyfin"
+    - "{{ mount_points.metadata }}/jellyfin/cache"
+    - "{{ mount_points.metadata }}/jellyfin/transcodes"
+    - "{{ mount_points.media }}/movies"
+    - "{{ mount_points.media }}/tv"
+    - "{{ mount_points.media }}/music"
+    - "{{ mount_points.backups }}/restic"
+
+- name: Set up backup rotation script
+  ansible.builtin.template:
+    src: backup-rotation.sh.j2
+    dest: /usr/local/bin/backup-rotation.sh
+    mode: '0750'
+
+- name: Configure backup rotation cron
+  ansible.builtin.cron:
+    name: "Backup rotation"
+    minute: "0"
+    hour: "3"
+    job: "/usr/local/bin/backup-rotation.sh"

@@ -1,0 +1,41 @@
+---
+- name: Install Restic backup tool
+  ansible.builtin.apt:
+    name: restic
+    state: present
+
+- name: Create backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+  loop:
+    - /opt/backup
+    - /opt/backup/scripts
+
+- name: Configure backup script
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: /opt/backup/scripts/backup.sh
+    mode: '0750'
+
+- name: Configure backup environment
+  ansible.builtin.template:
+    src: backup.env.j2
+    dest: /opt/backup/backup.env
+    mode: '0600'
+  no_log: true
+
+- name: Setup backup cron job
+  ansible.builtin.cron:
+    name: "Daily backup"
+    minute: "0"
+    hour: "2"
+    job: "/opt/backup/scripts/backup.sh >> /var/log/backup.log 2>&1"
+    state: present
+
+- name: Create backup log rotation
+  ansible.builtin.template:
+    src: backup-logrotate.j2
+    dest: /etc/logrotate.d/backup
+    mode: '0644'

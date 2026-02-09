@@ -1,0 +1,22 @@
+#!/bin/bash
+# Backup rotation script for homelab
+
+BACKUP_DIR="{{ mount_points.backups }}"
+RETENTION_DAYS={{ backup_retention_days | default(30) }}
+
+# Rotate between backup disks
+if mountpoint -q "$BACKUP_DIR"; then
+    echo "$(date): Backup rotation started"
+    
+    # Clean old backups
+    find "$BACKUP_DIR/restic" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null
+    
+    # Sync backup metadata
+    if mountpoint -q "$BACKUP_DIR/disk2"; then
+        echo "$(date): Disk2 also mounted, considering for rotation"
+    fi
+    
+    echo "$(date): Backup rotation completed"
+else
+    echo "$(date): Backup directory not mounted, skipping"
+fi

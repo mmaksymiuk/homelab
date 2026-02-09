@@ -1,0 +1,42 @@
+#!/bin/bash
+# Backup script using Restic
+set -e
+
+source /opt/backup/backup.env
+
+export RESTIC_REPOSITORY="{{ mount_points.backups }}/restic"
+export RESTIC_PASSWORD="${RESTIC_PASSWORD}"
+
+# Initialize repo if doesn't exist
+if ! restic snapshots > /dev/null 2>&1; then
+    echo "$(date): Initializing restic repository"
+    restic init
+fi
+
+# Docker volumes to backup
+DOCKER_VOLUMES="
+{{ mount_points.performance }}/docker/volumes/homeassistant
+{{ mount_points.performance }}/docker/volumes/grafana
+{{ mount_points.performance }}/docker/volumes/influxdb
+"
+
+# Create backup
+echo "$(date): Starting backup"
+restic backup \
+    --verbose \
+    --tag "{{ inventory_hostname }}" \
+    --exclude='*.log' \
+    --exclude='*.tmp' \
+    $DOCKER_VOLUMES \
+    /etc \
+    /home
+
+# Keep last 7 daily, 4 weekly, 12 monthly backups
+echo "$(date): Cleaning old backups"
+restic forget \
+    --keep-daily 7 \
+    --keep-weekly 4 \
+    --keep-monthly 12 \
+    --prune
+
+echo "$(date): Backup completed"

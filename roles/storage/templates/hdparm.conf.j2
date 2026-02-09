@@ -1,0 +1,27 @@
+# HDD spin-down configuration
+# Spin down disks after 30 minutes (180 * 5 seconds = 900 seconds = 15 minutes default)
+# Using -S 241 = 30 minutes (241-240)*30 minutes
+
+{% if storage_config.hdd_media is defined %}
+{{ storage_config.hdd_media }} {
+    apm = 127
+    spindown_time = 241
+    write_cache = on
+}
+{% endif %}
+
+{% if storage_config.hdd_backup_1 is defined %}
+{{ storage_config.hdd_backup_1 }} {
+    apm = 127
+    spindown_time = 241
+    write_cache = on
+}
+{% endif %}
+
+{% if storage_config.hdd_backup_2 is defined %}
+{{ storage_config.hdd_backup_2 }} {
+    apm = 127
+    spindown_time = 241
+    write_cache = on
+}
+{% endif %}

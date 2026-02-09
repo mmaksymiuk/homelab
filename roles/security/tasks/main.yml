@@ -1,0 +1,131 @@
+---
+- name: Install sudo
+  ansible.builtin.apt:
+    name: sudo
+    state: present
+    update_cache: true
+
+- name: Ensure admin user exists
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    groups: "{{ admin_group }}"
+    append: true
+    shell: /bin/bash
+    state: present
+    createhome: true
+
+- name: Configure sudo for admin user without password
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ admin_user }}"
+    content: "{{ admin_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    mode: '0440'
+    owner: root
+    group: root
+    validate: 'visudo -cf %s'
+
+- name: Ensure SSH directory exists for admin user
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: Copy SSH authorized keys
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/files/authorized_keys"
+    dest: "/home/{{ admin_user }}/.ssh/authorized_keys"
+    mode: '0600'
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  ignore_errors: true
+
+- name: Harden SSH configuration
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: '0644'
+    owner: root
+    group: root
+  notify: Restart SSH
+
+- name: Disable root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin no'
+  notify: Restart SSH
+
+- name: Disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+  notify: Restart SSH
+
+- name: Enable pubkey authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+  notify: Restart SSH
+
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name:
+      - fail2ban
+      - python3-systemd
+    state: present
+  when: fail2ban_enabled | default(true)
+
+- name: Configure fail2ban
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+  notify: Restart fail2ban
+  when: fail2ban_enabled | default(true)
+
+- name: Ensure fail2ban is running
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  when: fail2ban_enabled | default(true)
+
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: ufw_enabled | default(true)
+
+- name: Reset UFW
+  ansible.builtin.ufw:
+    state: reset
+  when: ufw_enabled | default(true)
+
+- name: Allow SSH
+  ansible.builtin.ufw:
+    rule: allow
+    port: "{{ ssh_port | default(22) }}"
+    proto: tcp
+  when: ufw_enabled | default(true)
+
+- name: Allow Cockpit
+  ansible.builtin.ufw:
+    rule: allow
+    port: '9090'
+    proto: tcp
+  when: ufw_enabled | default(true)
+
+- name: Allow internal network access
+  ansible.builtin.ufw:
+    rule: allow
+    src: '192.168.0.0/16'
+  when: ufw_enabled | default(true)
+
+- name: Enable UFW
+  ansible.builtin.ufw:
+    state: enabled
+    policy: deny
+  when: ufw_enabled | default(true)

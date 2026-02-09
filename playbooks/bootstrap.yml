@@ -1,0 +1,57 @@
+---
+# Bootstrap playbook for initial server setup
+# Run: ansible-playbook -i inventory/production playbooks/bootstrap.yml --ask-pass --ask-become-pass
+
+- name: Bootstrap Homelab Server
+  hosts: homelab
+  become: true
+  gather_facts: false
+  
+  pre_tasks:
+    - name: Install Python for Ansible
+      ansible.builtin.raw: apt-get update && apt-get install -y python3 python3-apt
+      changed_when: true
+    
+    - name: Gather facts
+      ansible.builtin.setup:
+  
+  tasks:
+    - name: Ensure sudo is installed
+      ansible.builtin.apt:
+        name: sudo
+        state: present
+        update_cache: true
+    
+    - name: Create ansible user
+      ansible.builtin.user:
+        name: ansible
+        groups: sudo
+        append: true
+        shell: /bin/bash
+        state: present
+        createhome: true
+    
+    - name: Configure sudo for ansible user
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ansible
+        content: "ansible ALL=(ALL) NOPASSWD: ALL\n"
+        mode: '0440'
+        owner: root
+        group: root
+        validate: 'visudo -cf %s'
+    
+    - name: Ensure SSH directory exists for ansible user
+      ansible.builtin.file:
+        path: /home/ansible/.ssh
+        state: directory
+        mode: '0700'
+        owner: ansible
+        group: ansible
+    
+    - name: Display bootstrap complete message
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap complete!"
+          - "Next steps:"
+          - "1. Copy your SSH key: ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@{{ inventory_hostname }}"
+          - "2. Run: ansible-playbook -i inventory/production playbooks/site.yml"
