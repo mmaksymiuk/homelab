@@ -39,6 +39,7 @@
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
+      - docker-model-plugin
     state: present
 
 - name: Ensure Docker is started and enabled at boot.

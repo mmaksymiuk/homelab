@@ -1,6 +1,6 @@
 ---
 compose_install_dir: /home/{{ ansible_user }}/compose
-compose_data_dir: /data
+compose_data_dir: /home/{{ ansible_user }}/data
 compose_remove_services: no
 compose_pihole_data_dir: "{{ compose_data_dir }}/pihole-data"
 compose_ha_data_dir: "{{ compose_data_dir }}/ha-data"

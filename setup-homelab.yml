@@ -1,14 +1,12 @@
 ---
 - name: Deploy docker compose
   hosts: homelab
-
   vars_files:
     - homelab-compose-variables.yml
     - secure-variables.yml
-
   tasks:
     - name: Tear down existing services.
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ compose_install_dir }}"
         state: absent
         remove_volumes: true
@@ -54,23 +52,52 @@
       template:
         src: homelab-compose.yml.j2
         dest: "{{ compose_install_dir }}/docker-compose.yml"
-
+    - name: Set ownership for Mosquitto directories.
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: 1883
+        group: 1883
+        mode: '0755'
+        recurse: yes
+      with_items:
+        - "{{ compose_mqtt_data_dir }}/config"
+        - "{{ compose_mqtt_data_dir }}/log"
+        - "{{ compose_mqtt_data_dir }}/data"
+      become: yes
+    
+    - name: Create mosquitto log file with restricted permissions.
+      file:
+        path: "{{ compose_mqtt_data_dir }}/log/mosquitto.log"
+        state: touch
+        owner: 1883
+        group: 1883
+        mode: '0600'  # Only owner can read/write
+      become: yes
+    
     - name: Copy mosquitto configuration file.
       copy:
         src: ./files/mosquitto.conf
         dest: "{{ compose_mqtt_data_dir }}/config/mosquitto.conf"
-        force: no
-
+        force: yes
+        owner: 1883
+        group: 1883
+        mode: '0644'  # Config can be world-readable
+      become: true
+    
     - name: Copy mosquitto password file.
       template:
         src: ./templates/mosquitto_users.j2
         dest: "{{ compose_mqtt_data_dir }}/config/mosquitto_users"
         force: false
+        owner: 1883
+        group: 1883
+        mode: '0600'  # Password file must be private
       register: mosquittousers
       become: true
 
     - name: Start services
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ compose_install_dir }}"
         state: present
       become: yes
@@ -82,10 +109,10 @@
       become: yes
       when: mosquittousers.changed
 
-    - name: Restart mosquitto a container.
+    - name: Restart mosquitto container.
       community.docker.docker_container:
         name: "mosquitto"
-        state: started
+        state: recreated
         restart: true
       become: yes
       when: mosquittousers.changed
