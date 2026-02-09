@@ -5,16 +5,30 @@ Automated homelab setup using Ansible and Docker for Debian servers.
 ## Quick Start
 
 ```bash
-# 1. Bootstrap server (run on server)
-ssh root@your-server-ip 'bash -c "$(curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh)"'
+# 1. Bootstrap server (run ON THE SERVER as your existing user, e.g., maxu)
+# This configures sudo access for your user
+curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
 
-# 2. Copy SSH key
-ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@your-server-ip
+# Or manually:
+# cd scripts && bash bootstrap.sh
 
-# 3. Configure secrets
-vim files/docker-compose/.env
+# 2. Copy SSH key from YOUR LOCAL MACHINE (will prompt for password)
+# Replace 'maxu' with your actual username if different
+ssh-copy-id -i ~/.ssh/id_rsa.pub maxu@your-server-ip
 
-# 4. Deploy everything
+# 3. Test SSH key works (should NOT ask for password)
+ssh maxu@your-server-ip
+
+# 4. Update inventory with your username and server IP
+vim inventory/production/hosts.yml
+# Change: ansible_user: maxu
+# Change: ansible_host: your-server-ip
+
+# 5. Configure secrets on YOUR LOCAL MACHINE
+cp templates/configs/.env.j2 files/docker-compose/.env
+vim files/docker-compose/.env  # Add your credentials
+
+# 6. Deploy everything (SSH password auth will be disabled!)
 ansible-playbook -i inventory/production playbooks/site.yml
 ansible-playbook -i inventory/production playbooks/deploy-containers.yml
 ```

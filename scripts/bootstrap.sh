@@ -1,18 +1,28 @@
 #!/bin/bash
-# Bootstrap script for new Debian server
-# Run this on the server before using Ansible
+# Bootstrap script for existing Debian server user
+# Run this on the server as the existing user (e.g., maxu)
 
 set -e
 
+# Get the current username
+CURRENT_USER=$(whoami)
+
 echo "=== Debian Server Bootstrap Script ==="
+echo "Running as user: $CURRENT_USER"
+
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then 
+   echo "Please run as your regular user, not root"
+   exit 1
+fi
 
 # Update system
 echo "Updating system packages..."
-apt update && apt upgrade -y
+sudo apt update && sudo apt upgrade -y
 
 # Install essential packages
 echo "Installing essential packages..."
-apt install -y \
+sudo apt install -y \
     curl \
     wget \
     git \
@@ -25,25 +35,33 @@ apt install -y \
     openssh-server \
     ca-certificates
 
-# Create ansible user
-echo "Creating ansible user..."
-if ! id "ansible" &>/dev/null; then
-    useradd -m -s /bin/bash -G sudo ansible
-    echo "ansible ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/ansible
-fi
+# Configure sudo for current user without password
+echo "Configuring sudo access..."
+echo "$CURRENT_USER ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/$CURRENT_USER > /dev/null
+sudo chmod 0440 /etc/sudoers.d/$CURRENT_USER
 
-# Configure SSH
-echo "Configuring SSH..."
-sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-systemctl restart sshd
+# Verify sudo works
+echo "Testing sudo access..."
+sudo -n true || { echo "ERROR: sudo configuration failed!"; exit 1; }
+
+# Note: SSH hardening (disable password auth, root login) will be done by Ansible
+# AFTER you've copied your SSH key. Don't disable password auth manually!
 
 echo ""
 echo "=== Bootstrap Complete ==="
-echo "Next steps:"
-echo "1. Copy your SSH public key to the server:"
-echo "   ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@<server-ip>"
-echo "2. Update inventory/production/hosts.yml with your server IP"
-echo "3. Run: ansible-playbook -i inventory/production playbooks/site.yml"
+echo "IMPORTANT: Password authentication is still enabled!"
 echo ""
-echo "Server is ready for Ansible configuration!"
+echo "Next steps:"
+echo "1. From your local machine, copy your SSH public key:"
+echo "   ssh-copy-id -i ~/.ssh/id_rsa.pub $CURRENT_USER@<server-ip>"
+echo ""
+echo "2. Test SSH key login (should NOT ask for password):"
+echo "   ssh $CURRENT_USER@<server-ip>"
+echo ""
+echo "3. Update inventory/production/hosts.yml with your server IP"
+echo ""
+echo "4. Run Ansible to harden SSH and configure everything:"
+echo "   ansible-playbook -i inventory/production playbooks/site.yml"
+echo ""
+echo "   This will disable password authentication and complete setup!"
+echo ""

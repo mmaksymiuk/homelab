@@ -23,20 +23,25 @@ Complete Ansible-based homelab infrastructure for Debian servers with Docker con
 
 ### 1. Initial Server Setup
 
-Run on your Debian server:
+**Run these commands ON YOUR DEBIAN SERVER** as your existing user (e.g., maxu):
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | sudo bash
+# Download and run bootstrap script
+# This sets up sudo access for your user without password
+curl -fsSL https://raw.githubusercontent.com/yourusername/homelab/main/scripts/bootstrap.sh | bash
+
+# Or manually run the local script:
+cd scripts && bash bootstrap.sh
 ```
 
-Or manually:
-```bash
-cd scripts
-sudo bash bootstrap.sh
-```
+The bootstrap script will:
+- Update system packages
+- Install essential tools (python3, sudo, etc.)
+- Configure passwordless sudo for your user
 
 ### 2. Configure Inventory
 
-Edit `inventory/production/hosts.yml`:
+On your **local machine**, edit `inventory/production/hosts.yml`:
 ```yaml
 all:
   children:
@@ -44,12 +49,28 @@ all:
       hosts:
         homelab-server:
           ansible_host: YOUR_SERVER_IP
+          ansible_user: maxu  # Change to your existing username
+```
+
+Also update `ansible.cfg` if needed:
+```ini
+[defaults]
+remote_user = maxu  # Change to your username
 ```
 
 ### 3. Copy SSH Key
+
+**From your local machine**, copy your SSH public key to the server (you'll be prompted for your user's password):
+
 ```bash
-ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@YOUR_SERVER_IP
+# Replace 'maxu' with your actual username
+ssh-copy-id -i ~/.ssh/id_rsa.pub maxu@YOUR_SERVER_IP
+
+# Test that key authentication works (should NOT ask for password):
+ssh maxu@YOUR_SERVER_IP
 ```
+
+**Important:** Only proceed after SSH key login works without a password!
 
 ### 4. Configure Secrets
 
@@ -62,6 +83,8 @@ vim files/docker-compose/.env
 
 ### 5. Run Ansible Playbooks
 
+⚠️ **WARNING:** The `site.yml` playbook will disable password authentication and root login via SSH. Make sure your SSH key works before running this!
+
 Bootstrap the server:
 ```bash
 ansible-playbook -i inventory/production playbooks/site.yml
@@ -71,6 +94,8 @@ Deploy containers:
 ```bash
 ansible-playbook -i inventory/production playbooks/deploy-containers.yml
 ```
+
+After `site.yml` completes, password authentication will be disabled. You can only log in via SSH key.
 
 ## Directory Structure
 

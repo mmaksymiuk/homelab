@@ -1,6 +1,7 @@
 ---
-# Bootstrap playbook for initial server setup
+# Bootstrap playbook for existing user on server
 # Run: ansible-playbook -i inventory/production playbooks/bootstrap.yml --ask-pass --ask-become-pass
+# This ensures sudo is configured for the existing user (e.g., maxu)
 
 - name: Bootstrap Homelab Server
   hosts: homelab
@@ -22,36 +23,28 @@
         state: present
         update_cache: true
     
-    - name: Create ansible user
-      ansible.builtin.user:
-        name: ansible
-        groups: sudo
-        append: true
-        shell: /bin/bash
-        state: present
-        createhome: true
-    
-    - name: Configure sudo for ansible user
+    - name: Configure sudo for {{ ansible_user }} without password
       ansible.builtin.copy:
-        dest: /etc/sudoers.d/ansible
-        content: "ansible ALL=(ALL) NOPASSWD: ALL\n"
+        dest: /etc/sudoers.d/{{ ansible_user }}
+        content: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL\n"
         mode: '0440'
         owner: root
         group: root
         validate: 'visudo -cf %s'
     
-    - name: Ensure SSH directory exists for ansible user
+    - name: Ensure SSH directory exists for {{ ansible_user }}
       ansible.builtin.file:
-        path: /home/ansible/.ssh
+        path: /home/{{ ansible_user }}/.ssh
         state: directory
         mode: '0700'
-        owner: ansible
-        group: ansible
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
     
     - name: Display bootstrap complete message
       ansible.builtin.debug:
         msg:
           - "Bootstrap complete!"
+          - "User: {{ ansible_user }}"
           - "Next steps:"
-          - "1. Copy your SSH key: ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@{{ inventory_hostname }}"
+          - "1. Copy your SSH key: ssh-copy-id -i ~/.ssh/id_rsa.pub {{ ansible_user }}@{{ inventory_hostname }}"
           - "2. Run: ansible-playbook -i inventory/production playbooks/site.yml"
