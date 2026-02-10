@@ -1,44 +1,30 @@
 ---
-- name: Install sudo
-  ansible.builtin.apt:
-    name: sudo
-    state: present
-    update_cache: true
+# Note: User creation and sudo configuration are handled by bootstrap.sh
+# This role focuses on security hardening only
 
-- name: Ensure admin user exists
-  ansible.builtin.user:
-    name: "{{ admin_user }}"
-    groups: "{{ admin_group }}"
-    append: true
-    shell: /bin/bash
-    state: present
-    createhome: true
-
-- name: Configure sudo for admin user without password
-  ansible.builtin.copy:
-    dest: "/etc/sudoers.d/{{ admin_user }}"
-    content: "{{ admin_user }} ALL=(ALL) NOPASSWD: ALL\n"
-    mode: '0440'
-    owner: root
-    group: root
-    validate: 'visudo -cf %s'
-
-- name: Ensure SSH directory exists for admin user
-  ansible.builtin.file:
-    path: "/home/{{ admin_user }}/.ssh"
-    state: directory
-    mode: '0700'
-    owner: "{{ admin_user }}"
-    group: "{{ admin_user }}"
-
-- name: Copy SSH authorized keys
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/files/authorized_keys"
-    dest: "/home/{{ admin_user }}/.ssh/authorized_keys"
-    mode: '0600'
-    owner: "{{ admin_user }}"
-    group: "{{ admin_user }}"
+- name: Check if SSH key authentication is working
+  ansible.builtin.command: "ssh -o BatchMode=yes -o ConnectTimeout=5 {{ ansible_user }}@{{ ansible_host }} echo 'SSH key auth OK'"
+  delegate_to: localhost
+  become: false
+  changed_when: false
   ignore_errors: true
+  register: ssh_key_test
+
+- name: Warn if SSH key authentication not confirmed
+  ansible.builtin.fail:
+    msg: |
+      WARNING: SSH key authentication may not be properly configured!
+      
+      Before proceeding, ensure you can SSH without password:
+        ssh {{ ansible_user }}@{{ ansible_host }}
+      
+      If this prompts for a password, run from your local machine:
+        ssh-copy-id -i ~/.ssh/id_rsa.pub {{ ansible_user }}@{{ ansible_host }}
+      
+      This check can be bypassed with: --extra-vars "skip_ssh_check=true"
+  when:
+    - ssh_key_test.rc != 0
+    - skip_ssh_check | default(false) | bool == false
 
 - name: Harden SSH configuration
   ansible.builtin.template:
@@ -86,12 +72,14 @@
   notify: Restart fail2ban
   when: fail2ban_enabled | default(true)
 
-- name: Ensure fail2ban is running
-  ansible.builtin.service:
+- name: Ensure fail2ban is enabled and running
+  ansible.builtin.systemd:
     name: fail2ban
     state: started
     enabled: true
+    daemon_reload: true
   when: fail2ban_enabled | default(true)
+  ignore_errors: true
 
 - name: Install UFW
   ansible.builtin.apt:
@@ -118,10 +106,11 @@
     proto: tcp
   when: ufw_enabled | default(true)
 
-- name: Allow internal network access
+- name: Allow trusted network access
   ansible.builtin.ufw:
     rule: allow
-    src: '192.168.0.0/16'
+    src: "{{ item }}"
+  loop: "{{ ufw_trusted_networks | default(['192.168.1.0/24']) }}"
   when: ufw_enabled | default(true)
 
 - name: Enable UFW

@@ -28,7 +28,6 @@
       - ca-certificates
       - gnupg
       - lsb-release
-      - software-properties-common
     state: present
 
 - name: Set timezone

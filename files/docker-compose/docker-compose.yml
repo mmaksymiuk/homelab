@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Reverse Proxy & SSL
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.3.3
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -49,10 +49,18 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_AUTH}"
       - "traefik.http.routers.traefik.middlewares=traefik-auth"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   # Pi-hole (DNS-based ad blocker)
   pihole:
-    image: pihole/pihole:latest
+    image: pihole/pihole:2026.02.0
     container_name: pihole
     restart: unless-stopped
     networks:
@@ -77,19 +85,35 @@ services:
       - "traefik.http.services.pihole.loadbalancer.server.port=80"
     cap_add:
       - NET_ADMIN
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # Cloudflare Tunnel (for external access without public IP)
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2025.12.0
     container_name: cloudflared
     restart: unless-stopped
     networks:
       - traefik
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   # Jellyfin Media Server
   jellyfin:
-    image: jellyfin/jellyfin:latest
+    image: jellyfin/jellyfin:10.10.5
     container_name: jellyfin
     restart: unless-stopped
     networks:
@@ -116,6 +140,14 @@ services:
       - "traefik.http.routers.jellyfin.entrypoints=websecure"
       - "traefik.http.routers.jellyfin.tls.certresolver=cloudflare"
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
 networks:
   traefik:

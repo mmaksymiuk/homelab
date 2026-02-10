@@ -18,6 +18,22 @@
     mode: '0755'
   loop: "{{ mount_points | dict2items }}"
 
+- name: Check if performance NVMe is already formatted
+  ansible.builtin.command: "blkid -s TYPE -o value {{ storage_config.nvme_performance }}"
+  register: nvme_performance_fstype
+  changed_when: false
+  failed_when: false
+  when: storage_config.nvme_performance is defined
+
+- name: Create XFS filesystem on performance NVMe (if not formatted)
+  ansible.builtin.filesystem:
+    fstype: xfs
+    dev: "{{ storage_config.nvme_performance }}"
+    force: false
+  when: 
+    - storage_config.nvme_performance is defined
+    - nvme_performance_fstype.stdout == "" or nvme_performance_fstype.rc != 0
+
 - name: Install performance NVMe (noatime for better performance)
   ansible.posix.mount:
     path: "{{ mount_points.performance }}"
@@ -26,6 +42,22 @@
     opts: noatime,nodiratime
     state: mounted
   when: storage_config.nvme_performance is defined
+
+- name: Check if metadata SSD is already formatted
+  ansible.builtin.command: "blkid -s TYPE -o value {{ storage_config.sata_metadata }}"
+  register: sata_metadata_fstype
+  changed_when: false
+  failed_when: false
+  when: storage_config.sata_metadata is defined
+
+- name: Create XFS filesystem on metadata SSD (if not formatted)
+  ansible.builtin.filesystem:
+    fstype: xfs
+    dev: "{{ storage_config.sata_metadata }}"
+    force: false
+  when:
+    - storage_config.sata_metadata is defined
+    - sata_metadata_fstype.stdout == "" or sata_metadata_fstype.rc != 0
 
 - name: Install metadata SSD (noatime for better performance)
   ansible.posix.mount:
@@ -36,6 +68,22 @@
     state: mounted
   when: storage_config.sata_metadata is defined
 
+- name: Check if media HDD is already formatted
+  ansible.builtin.command: "blkid -s TYPE -o value {{ storage_config.hdd_media }}"
+  register: hdd_media_fstype
+  changed_when: false
+  failed_when: false
+  when: storage_config.hdd_media is defined
+
+- name: Create XFS filesystem on media HDD (if not formatted)
+  ansible.builtin.filesystem:
+    fstype: xfs
+    dev: "{{ storage_config.hdd_media }}"
+    force: false
+  when:
+    - storage_config.hdd_media is defined
+    - hdd_media_fstype.stdout == "" or hdd_media_fstype.rc != 0
+
 - name: Install media HDD (relatime for balance)
   ansible.posix.mount:
     path: "{{ mount_points.media }}"
@@ -45,6 +93,22 @@
     state: mounted
   when: storage_config.hdd_media is defined
 
+- name: Check if backup HDD 1 is already formatted
+  ansible.builtin.command: "blkid -s TYPE -o value {{ storage_config.hdd_backup_1 }}"
+  register: hdd_backup_1_fstype
+  changed_when: false
+  failed_when: false
+  when: storage_config.hdd_backup_1 is defined
+
+- name: Create XFS filesystem on backup HDD 1 (if not formatted)
+  ansible.builtin.filesystem:
+    fstype: xfs
+    dev: "{{ storage_config.hdd_backup_1 }}"
+    force: false
+  when:
+    - storage_config.hdd_backup_1 is defined
+    - hdd_backup_1_fstype.stdout == "" or hdd_backup_1_fstype.rc != 0
+
 - name: Install backup HDD 1 (relatime for balance)
   ansible.posix.mount:
     path: "{{ mount_points.backups }}"
@@ -53,6 +117,22 @@
     opts: relatime
     state: mounted
   when: storage_config.hdd_backup_1 is defined
+
+- name: Check if backup HDD 2 is already formatted
+  ansible.builtin.command: "blkid -s TYPE -o value {{ storage_config.hdd_backup_2 }}"
+  register: hdd_backup_2_fstype
+  changed_when: false
+  failed_when: false
+  when: storage_config.hdd_backup_2 is defined
+
+- name: Create XFS filesystem on backup HDD 2 (if not formatted)
+  ansible.builtin.filesystem:
+    fstype: xfs
+    dev: "{{ storage_config.hdd_backup_2 }}"
+    force: false
+  when:
+    - storage_config.hdd_backup_2 is defined
+    - hdd_backup_2_fstype.stdout == "" or hdd_backup_2_fstype.rc != 0
 
 - name: Install backup HDD 2 (relatime for balance, separate subdir)
   ansible.posix.mount:

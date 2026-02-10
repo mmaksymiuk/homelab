@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Home Assistant
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
+    image: ghcr.io/home-assistant/home-assistant:2026.2.0
     container_name: homeassistant
     restart: unless-stopped
     privileged: true
@@ -24,10 +24,18 @@ services:
       - "traefik.http.routers.homeassistant.entrypoints=websecure"
       - "traefik.http.routers.homeassistant.tls.certresolver=cloudflare"
       - "traefik.http.services.homeassistant.loadbalancer.server.port=8123"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # Mosquitto MQTT Broker
   mosquitto:
-    image: eclipse-mosquitto:2
+    image: eclipse-mosquitto:2.0.21
     container_name: mosquitto
     restart: unless-stopped
     networks:
@@ -46,10 +54,18 @@ services:
       - "traefik.tcp.routers.mosquitto.rule=HostSNI(`*`)"
       - "traefik.tcp.routers.mosquitto.entrypoints=mqtt"
       - "traefik.tcp.services.mosquitto.loadbalancer.server.port=1883"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
   # Zigbee2MQTT
   zigbee2mqtt:
-    image: koenkk/zigbee2mqtt:latest
+    image: koenkk/zigbee2mqtt:2.1.0
     container_name: zigbee2mqtt
     restart: unless-stopped
     networks:
@@ -73,6 +89,14 @@ services:
       - "traefik.http.services.zigbee2mqtt.loadbalancer.server.port=8080"
       - "traefik.http.middlewares.zigbee-auth.basicauth.users=${ZIGBEE_AUTH}"
       - "traefik.http.routers.zigbee2mqtt.middlewares=zigbee-auth"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
 networks:
   traefik:

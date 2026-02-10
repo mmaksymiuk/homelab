@@ -31,13 +31,21 @@ vim inventory/production/hosts.yml
 # Change: ansible_user: maxu
 # Change: ansible_host: your-server-ip
 
-# 4. Configure secrets on YOUR LOCAL MACHINE
-cp templates/configs/.env.j2 files/docker-compose/.env
-vim files/docker-compose/.env  # Add your credentials
+# 4. Configure secrets using Ansible Vault
+# Edit the vault file with your actual credentials:
+ansible-vault edit inventory/production/group_vars/vault.yml
 
-# 5. Deploy everything (SSH password auth will be disabled!)
-ansible-playbook -i inventory/production playbooks/site.yml
-ansible-playbook -i inventory/production playbooks/deploy-containers.yml
+# Or create a vault password file for easier usage:
+echo "your-vault-password" > ~/.vault_pass.txt
+chmod 600 ~/.vault_pass.txt
+
+# 5. Update inventory with your specific network settings
+vim inventory/production/group_vars/all.yml
+# Change: ufw_trusted_networks to your actual home network
+
+# 6. Deploy everything (SSH password auth will be disabled!)
+ansible-playbook -i inventory/production playbooks/site.yml --vault-password-file ~/.vault_pass.txt
+ansible-playbook -i inventory/production playbooks/deploy-containers.yml --vault-password-file ~/.vault_pass.txt
 ```
 
 ## What's Included

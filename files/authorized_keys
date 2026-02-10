@@ -1,3 +1,0 @@
-# This file is used to generate htpasswd entries for Traefik basic auth
-# Generate with: htpasswd -nb admin yourpassword | sed -e s/\$/\$\$/g
-# Copy the output to .env files

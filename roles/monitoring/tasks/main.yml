@@ -36,3 +36,14 @@
     - { name: 'node-exporter.json', url: 'https://raw.githubusercontent.com/rfrail3/grafana-dashboards/master/prometheus/node-exporter-full.json' }
     - { name: 'docker-monitoring.json', url: 'https://raw.githubusercontent.com/vegasbrianc/prometheus/master/dashboards/Docker_Monitoring.json' }
   ignore_errors: true
+
+- name: Install node_exporter on host
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+
+- name: Enable and start node_exporter
+  ansible.builtin.service:
+    name: prometheus-node-exporter
+    state: started
+    enabled: true

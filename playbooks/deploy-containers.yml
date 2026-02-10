@@ -79,3 +79,28 @@
         state: present
         pull: true
       tags: ['home']
+
+    - name: Wait for services to start
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Check Traefik health
+      ansible.builtin.uri:
+        url: "http://localhost:80/ping"
+        status_code: 200
+      register: traefik_health
+      ignore_errors: true
+
+    - name: Check Pi-hole health
+      ansible.builtin.uri:
+        url: "http://localhost:8080/admin/index.php"
+        status_code: 200
+      register: pihole_health
+      ignore_errors: true
+
+    - name: Display service health status
+      ansible.builtin.debug:
+        msg:
+          - "Traefik: {{ 'OK' if traefik_health.status == 200 else 'FAILED' }}"
+          - "Pi-hole: {{ 'OK' if pihole_health.status == 200 else 'FAILED' }}"
+      when: traefik_health is defined or pihole_health is defined

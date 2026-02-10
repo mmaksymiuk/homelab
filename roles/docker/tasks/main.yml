@@ -39,9 +39,9 @@
     state: present
     update_cache: true
 
-- name: Add admin user to docker group
+- name: Add ansible user to docker group
   ansible.builtin.user:
-    name: "{{ admin_user }}"
+    name: "{{ ansible_user }}"
     groups: docker
     append: true
 
@@ -85,7 +85,7 @@
     path: "{{ mount_points.performance }}/docker/{{ item }}"
     state: directory
     mode: '0755'
-    owner: "{{ admin_user }}"
+    owner: "{{ ansible_user }}"
     group: docker
   loop:
     - compose
