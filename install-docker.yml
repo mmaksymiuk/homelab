@@ -1,6 +1,0 @@
----
-- name: Install docker service
-  hosts: all
-  become: yes
-  roles:
-    - install-docker
