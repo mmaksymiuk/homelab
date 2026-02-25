@@ -1,0 +1,107 @@
+---
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - parted
+      - zfsutils-linux
+      - rsync
+    state: present
+    update_cache: yes
+
+- name: Wait for disks to be available
+  ansible.builtin.wait_for:
+    path: "{{ item.value.device }}"
+    timeout: 10
+  when: item.value.filesystem == 'ext4'
+  loop: "{{ disk_config | dict2items }}"
+  register: disk_wait
+  failed_when: false
+
+- name: Create partitions for ext4 filesystems
+  ansible.builtin.parted:
+    device: "{{ item.value.device }}"
+    label: gpt
+    number: 1
+    part_start: "0%"
+    part_end: "100%"
+    state: present
+  when: item.value.filesystem == 'ext4'
+  loop: "{{ disk_config | dict2items }}"
+  register: partition_create
+
+- name: Create ZFS mirror pool on SSDs
+  ansible.builtin.shell: |
+    zpool create -f -o ashift=12 -m {{ item.value.mount_point }} {{ item.value.pool_name }} mirror {{ item.value.devices | join(' ') }}
+  when: item.key == 'backup_pool'
+  loop: "{{ disk_config | dict2items }}"
+  register: zfs_pool_create
+  failed_when: false
+  changed_when: "'state: ONLINE' not in zfs_pool_create.stdout"
+
+- name: Format ext4 partitions
+  ansible.builtin.shell: |
+    PART="{{ item.value.device }}{{ 'p1' if 'nvme' in item.value.device else '1' }}"
+    mkfs.ext4 -L {{ item.value.label }} $PART
+  when: item.value.filesystem == 'ext4'
+  loop: "{{ disk_config | dict2items }}"
+  register: format_partition
+  failed_when: false
+  changed_when: format_partition.rc == 0
+
+- name: Create mount points
+  ansible.builtin.file:
+    path: "{{ item.value.mount_point }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ disk_config | dict2items }}"
+
+- name: Mount ext4 filesystems
+  ansible.builtin.shell: |
+    PART="{{ item.value.device }}{{ 'p1' if 'nvme' in item.value.device else '1' }}"
+    mount $PART {{ item.value.mount_point }}
+  when: item.value.filesystem == 'ext4'
+  loop: "{{ disk_config | dict2items }}"
+  register: mount_ext4
+  failed_when: false
+  changed_when: mount_ext4.rc == 0
+
+- name: Configure ZFS properties
+  ansible.builtin.command: zfs set compression=lz4 atime=off recordsize=1M {{ item.value.pool_name }}
+  when: item.key == 'backup_pool'
+  loop: "{{ disk_config | dict2items }}"
+  register: zfs_properties
+  failed_when: false
+  changed_when: false
+
+- name: Get partition UUIDs
+  ansible.builtin.command: blkid -s UUID -o value {{ item.value.device }}{{ 'p1' if 'nvme' in item.value.device else '1' }}
+  when: item.value.filesystem == 'ext4'
+  loop: "{{ disk_config | dict2items }}"
+  register: partition_uuids
+  changed_when: false
+  failed_when: false
+
+- name: Add ext4 entries to fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "UUID={{ item.stdout }} {{ item.item.value.mount_point }} ext4 defaults,noatime,nofail 0 2"
+    state: present
+    create: yes
+  when: item.item.value.filesystem == 'ext4' and item.stdout | length > 0
+  loop: "{{ partition_uuids.results }}"
+
+- name: Create rsync cron for quick-share to media
+  ansible.builtin.cron:
+    name: "Rsync quick-share to media"
+    minute: "0"
+    hour: "8"
+    job: "/usr/bin/rsync -a --delete /mnt/quick-share/ /mnt/media/"
+    state: present
+
+- name: Create rsync cron for documents backup
+  ansible.builtin.cron:
+    name: "Rsync documents to backup"
+    minute: "0"
+    hour: "1"
+    job: "/usr/bin/rsync -a --delete /mnt/documents/ /mnt/documents-backup/"
+    state: present

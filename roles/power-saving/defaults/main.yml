@@ -1,0 +1,10 @@
+---
+cpu_governor: powersave
+hdd_spindown_timeout: 10
+hdd_devices:
+  - /dev/sda
+  - /dev/sdb
+  - /dev/sdc
+  - /dev/sdd
+
+install_tlp: true

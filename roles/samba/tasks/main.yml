@@ -1,0 +1,55 @@
+---
+- name: Install Samba and Cockpit
+  ansible.builtin.apt:
+    name:
+      - samba
+      - smbclient
+      - cockpit
+      - cockpit-file-sharing
+      - cockpit-storaged
+    state: present
+    update_cache: yes
+
+- name: Configure Samba
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    mode: '0644'
+  notify: Restart Samba
+
+- name: Create Samba users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    shell: /bin/bash
+  loop: "{{ samba_users }}"
+  failed_when: false
+
+- name: Add Samba users
+  ansible.builtin.command: |
+    (echo "{{ item.password }}"; echo "{{ item.password }}") | smbpasswd -a -s {{ item.name }}
+  loop: "{{ samba_users }}"
+  failed_when: false
+  changed_when: false
+
+- name: Enable Samba service
+  ansible.builtin.systemd:
+    name: smbd
+    enabled: yes
+    state: started
+
+- name: Enable Cockpit
+  ansible.builtin.systemd:
+    name: cockpit
+    enabled: yes
+    state: started
+
+- name: Open Cockpit firewall
+  ansible.builtin.command: firewall-cmd --permanent --add-service=cockpit
+  failed_when: false
+  changed_when: false
+
+- name: Reload firewall
+  ansible.builtin.command: firewall-cmd --reload
+  failed_when: false
+  changed_when: false

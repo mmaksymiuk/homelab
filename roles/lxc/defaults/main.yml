@@ -1,0 +1,66 @@
+---
+lxc_containers:
+  - name: tailscale
+    vmid: 100
+    cores: 1
+    memory: 512
+    rootfs: 4
+    ostype: debian
+    osversion: "13"
+    description: Tailscale subnet router
+    tags: ['vpn', 'tailscale']
+    features:
+      nesting: true
+  - name: homeassistant
+    vmid: 101
+    cores: 2
+    memory: 4096
+    rootfs: 16
+    ostype: debian
+    osversion: "13"
+    description: Home Assistant, Mosquitto, Zigbee2MQTT
+    tags: ['homeassistant', 'iot']
+  - name: pihole
+    vmid: 102
+    cores: 1
+    memory: 1024
+    rootfs: 4
+    ostype: debian
+    osversion: "13"
+    description: DNS ad-blocking
+    tags: ['dns', 'pihole']
+  - name: samba
+    vmid: 103
+    cores: 1
+    memory: 1024
+    rootfs: 8
+    ostype: debian
+    osversion: "13"
+    description: Samba shares and Cockpit UI
+    tags: ['samba', 'fileserver']
+    bind_mounts:
+      - /mnt/fast-storage
+      - /mnt/quick-share
+      - /mnt/documents
+      - /mnt/documents-backup
+      - /mnt/media
+  - name: docker
+    vmid: 104
+    cores: 4
+    memory: 8192
+    rootfs: 100
+    ostype: debian
+    osversion: "13"
+    description: Docker host for LLM, Jellyfin
+    tags: ['docker', 'llm']
+
+lxc_storage: local-lvm
+lxc_bridge: vmbr0
+lxc_network:
+  name: eth0
+  bridge: vmbr0
+  hwaddr: auto
+  ip: dhcp
+  type: veth
+
+ssh_key_path: ~/.ssh/id_rsa.pub

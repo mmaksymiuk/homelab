@@ -1,0 +1,133 @@
+---
+proxmox_host: 192.168.1.2
+ssh_key_path: ~/.ssh/id_rsa.pub
+
+cpu_governor: powersave
+hdd_spindown_timeout: 10
+
+disk_config:
+  fast_storage:
+    device: /dev/nvme0n1
+    mount_point: /mnt/fast-storage
+    filesystem: ext4
+    label: FAST_STORAGE
+  quick_share:
+    device: /dev/nvme1n1
+    mount_point: /mnt/quick-share
+    filesystem: ext4
+    label: QUICK_SHARE
+  backup_pool:
+    devices:
+      - /dev/sde
+      - /dev/sdf
+    mount_point: /mnt/backup-pool
+    filesystem: zfs
+    pool_name: backup-pool
+  documents:
+    device: /dev/sdc
+    mount_point: /mnt/documents
+    filesystem: ext4
+    label: DOCUMENTS
+  documents_backup:
+    device: /dev/sdd
+    mount_point: /mnt/documents-backup
+    filesystem: ext4
+    label: DOCUMENTS_BACKUP
+  media_drive:
+    device: /dev/sda
+    mount_point: /mnt/media
+    filesystem: ext4
+    label: MEDIA
+
+lxc_containers:
+  - name: tailscale
+    vmid: 100
+    cores: 1
+    memory: 512
+    rootfs: 4
+    ostype: debian
+    osversion: "13"
+    description: Tailscale subnet router
+    tags: ['vpn', 'tailscale']
+    features:
+      nesting: true
+  - name: homeassistant
+    vmid: 101
+    cores: 2
+    memory: 4096
+    rootfs: 16
+    ostype: debian
+    osversion: "13"
+    description: Home Assistant, Mosquitto, Zigbee2MQTT
+    tags: ['homeassistant', 'iot']
+  - name: pihole
+    vmid: 102
+    cores: 1
+    memory: 1024
+    rootfs: 4
+    ostype: debian
+    osversion: "13"
+    description: DNS ad-blocking
+    tags: ['dns', 'pihole']
+  - name: samba
+    vmid: 103
+    cores: 1
+    memory: 1024
+    rootfs: 8
+    ostype: debian
+    osversion: "13"
+    description: Samba shares and Cockpit UI
+    tags: ['samba', 'fileserver']
+    bind_mounts:
+      - /mnt/fast-storage
+      - /mnt/quick-share
+      - /mnt/documents
+      - /mnt/documents-backup
+      - /mnt/media
+  - name: docker
+    vmid: 104
+    cores: 4
+    memory: 8192
+    rootfs: 100
+    ostype: debian
+    osversion: "13"
+    description: Docker host for LLM, Jellyfin
+    tags: ['docker', 'llm']
+
+samba_users:
+  - name: maxu
+    password: changeme
+    groups: ['maxu', 'media']
+  - name: media
+    password: changeme
+    groups: ['media']
+
+samba_shares:
+  - name: QuickShare
+    path: /mnt/quick-share
+    comment: Quick access share
+    writable: yes
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu,media
+  - name: Media
+    path: /mnt/media
+    comment: Media files
+    writable: yes
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu,media
+  - name: Documents
+    path: /mnt/documents
+    comment: Documents
+    writable: yes
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu
+  - name: DocumentsBackup
+    path: /mnt/documents-backup
+    comment: Documents backup
+    writable: no
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu,media

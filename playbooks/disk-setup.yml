@@ -1,0 +1,33 @@
+---
+- name: Configure disks and storage
+  hosts: homelab
+  become: yes
+  vars:
+    debug: false
+  pre_tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Verify OS drive is protected
+      ansible.builtin.fail:
+        msg: "OS drive /dev/nvme2n1 must not be modified!"
+      when: item.value.device is defined and 'nvme2n1' in item.value.device
+      loop: "{{ disk_config | dict2items }}"
+
+  roles:
+    - role: disk-config
+      tags: ['disk', 'partition', 'zfs', 'mount']
+
+  post_tasks:
+    - name: Create rsync cron job for quick-share to media
+      ansible.builtin.cron:
+        name: "Rsync quick-share to media"
+        minute: "0"
+        hour: "8"
+        job: "/usr/bin/rsync -a --delete /mnt/quick-share/ /mnt/media/"
+        state: present
+      when: "'quick-share' in disk_config and 'media_drive' in disk_config"
+
+    - name: Display mount points
+      ansible.builtin.debug:
+        msg: "Mount points configured: {{ ansible_mounts | map(attribute='mount') | list }}"

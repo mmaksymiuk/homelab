@@ -1,0 +1,53 @@
+[global]
+   workgroup = WORKGROUP
+   server string = %h server
+   dns proxy = no
+   log file = /var/log/samba/log.%m
+   max log size = 1000
+   syslog = 0
+   panic action = /usr/share/samba/panic-action %d
+   server role = standalone server
+   passdb backend = tdbsam
+   obey pam restrictions = yes
+   unix password sync = yes
+   passwd program = /usr/bin/passwd %u
+   pam password change = yes
+   map to guest = never
+   usershare allow guests = no
+   security = user
+
+[printers]
+   comment = All Printers
+   browseable = no
+   path = /var/spool/samba
+   printable = yes
+   guest ok = no
+   read only = yes
+   create mask = 0700
+
+[print$]
+   comment = Printer Drivers
+   path = /var/lib/samba/printers
+   browseable = yes
+   read only = yes
+   guest ok = no
+
+{% for share in samba_shares %}
+[{{ share.name }}]
+   path = {{ share.path }}
+   comment = {{ share.comment | default(share.name) }}
+   {% if share.writable %}
+   writable = yes
+   read only = no
+   {% else %}
+   writable = no
+   read only = yes
+   {% endif %}
+   create mask = {{ share.create_mask | default('0755') }}
+   directory mask = {{ share.directory_mask | default('0755') }}
+   {% if share.valid_users %}
+   valid users = {{ share.valid_users }}
+   {% endif %}
+   force user = root
+   force group = root
+{% endfor %}

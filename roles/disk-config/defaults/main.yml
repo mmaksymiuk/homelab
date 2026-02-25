@@ -1,0 +1,36 @@
+---
+disk_config:
+  fast_storage:
+    device: /dev/nvme0n1
+    mount_point: /mnt/fast-storage
+    filesystem: ext4
+    label: FAST_STORAGE
+  quick_share:
+    device: /dev/nvme1n1
+    mount_point: /mnt/quick-share
+    filesystem: ext4
+    label: QUICK_SHARE
+  backup_pool:
+    devices:
+      - /dev/sde
+      - /dev/sdf
+    mount_point: /mnt/backup-pool
+    filesystem: zfs
+    pool_name: backup-pool
+  documents:
+    device: /dev/sdc
+    mount_point: /mnt/documents
+    filesystem: ext4
+    label: DOCUMENTS
+  documents_backup:
+    device: /dev/sdd
+    mount_point: /mnt/documents-backup
+    filesystem: ext4
+    label: DOCUMENTS_BACKUP
+  media_drive:
+    device: /dev/sda
+    mount_point: /mnt/media
+    filesystem: ext4
+    label: MEDIA
+
+mount_options: "defaults,noatime,nofail"

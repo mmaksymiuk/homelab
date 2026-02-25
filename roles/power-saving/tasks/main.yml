@@ -1,0 +1,121 @@
+---
+- name: Install TLP for power management
+  ansible.builtin.apt:
+    name:
+      - tlp
+      - hdparm
+    state: present
+    update_cache: yes
+  when: install_tlp | default(true)
+
+- name: Install hdparm if not using TLP
+  ansible.builtin.apt:
+    name:
+      - hdparm
+    state: present
+  when: not install_tlp | default(true)
+
+- name: Detect available CPU governors
+  ansible.builtin.command: cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
+  register: available_governors
+  changed_when: false
+
+- name: Set CPU governor to powersave
+  ansible.builtin.copy:
+    content: |
+      # Set CPU governor to powersave for all CPUs
+      for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+        echo "powersave" > $cpu/cpufreq/scaling_governor 2>/dev/null || true
+      done
+    dest: /etc/rc.local
+    mode: '0755'
+  when: cpu_governor in available_governors.stdout
+
+- name: Apply CPU governor immediately
+  ansible.builtin.command: |
+    for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+      echo "powersave" > $cpu/cpufreq/scaling_governor 2>/dev/null || true
+    done
+  when: cpu_governor in available_governors.stdout
+  failed_when: false
+  changed_when: false
+
+- name: Enable TLP service
+  ansible.builtin.systemd:
+    name: tlp
+    enabled: yes
+    state: started
+  when: install_tlp | default(true)
+  failed_when: false
+
+- name: Configure HDD APM for spin-down
+  ansible.builtin.shell: |
+    for device in {{ hdd_devices | join(' ') }}; do
+      if [ -b "$device" ]; then
+        # Set APM level (128 = default, 254 = max power saving)
+        # -S 12 = 1 minute * 12 = 12 minutes (or use hdd_spindown_timeout)
+        hdparm -S {{ hdd_spindown_timeout | int * 6 }} "$device" 2>/dev/null || true
+        # Enable APM
+        hdparm -B 254 "$device" 2>/dev/null || true
+      fi
+    done
+  args:
+    executable: /bin/bash
+  when: not install_tlp | default(true)
+  register: apm_config
+  failed_when: false
+  changed_when: apm_config.rc == 0
+
+- name: Create hdparm service for persistent APM settings
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/hdd-spin-down.service
+    content: |
+      [Unit]
+      Description=HDD Power Management - APM and Spin-down
+      After=local-fs.target
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/bash -c '
+        {% for device in hdd_devices %}
+        hdparm -S {{ hdd_spindown_timeout | int * 6 }} {{ device }} 2>/dev/null || true
+        hdparm -B 254 {{ device }} 2>/dev/null || true
+        {% endfor %}
+      '
+      
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  when: not install_tlp | default(true)
+  register: service_file
+
+- name: Enable HDD spin-down service
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    name: hdd-spin-down
+    enabled: yes
+    state: started
+  when: not install_tlp | default(true) and service_file.changed
+
+- name: Configure TLP for HDD APM
+  ansible.builtin.lineinfile:
+    path: /etc/tlp.d/99-hdd-apm.conf
+    line: "{{ item }}_APM_ON_AC=254"
+    create: yes
+  loop: "{{ hdd_devices | map('regex_replace', '^/dev/', '') | list }}"
+  when: install_tlp | default(true)
+
+- name: Configure TLP for HDD spin-down
+  ansible.builtin.lineinfile:
+    path: /etc/tlp.d/99-hdd-apm.conf
+    line: "{{ item }}_APM_ON_BAT=254"
+    create: yes
+  loop: "{{ hdd_devices | map('regex_replace', '^/dev/', '') | list }}"
+  when: install_tlp | default(true)
+
+- name: Restart TLP to apply HDD settings
+  ansible.builtin.systemd:
+    name: tlp
+    state: restarted
+  when: install_tlp | default(true)
+  failed_when: false

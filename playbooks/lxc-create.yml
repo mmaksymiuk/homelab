@@ -1,0 +1,41 @@
+---
+- name: Create LXC containers
+  hosts: homelab
+  become: yes
+  vars:
+    debug: false
+  pre_tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Check for SSH key
+      ansible.builtin.stat:
+        path: "{{ ssh_key_path | expanduser }}"
+      register: ssh_key_check
+      failed_when: false
+
+    - name: Fail if SSH key not found
+      ansible.builtin.fail:
+        msg: "SSH key not found at {{ ssh_key_path }}. Please provide a valid path."
+      when: not ssh_key_check.stat.exists
+
+    - name: Read SSH public key
+      ansible.builtin.command: cat {{ ssh_key_path | expanduser }}
+      register: ssh_key_content
+      changed_when: false
+
+    - name: Download Debian 13 template if not exists
+      ansible.builtin.command: pveam update && pveam available --section system | grep debian-13
+      register: template_check
+      changed_when: false
+      failed_when: false
+
+  roles:
+    - role: lxc
+      tags: ['lxc', 'container']
+
+  post_tasks:
+    - name: List running containers
+      ansible.builtin.command: pct list
+      register: container_list
+      changed_when: false

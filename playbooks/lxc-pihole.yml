@@ -1,0 +1,27 @@
+---
+- name: Create Pi-hole LXC container
+  hosts: homelab
+  become: yes
+  vars:
+    debug: false
+    container_filter: pihole
+  pre_tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+    - name: Download Debian 13 template
+      ansible.builtin.shell: pveam update && pveam available --section system | grep debian-13
+      register: template_check
+      changed_when: false
+      failed_when: false
+    - name: Get SSH authorized_keys from Proxmox
+      ansible.builtin.command: cat /root/.ssh/authorized_keys
+      register: ssh_key_content
+      changed_when: false
+
+  roles:
+    - role: lxc
+
+  post_tasks:
+    - name: List containers
+      ansible.builtin.command: pct list
+      changed_when: false

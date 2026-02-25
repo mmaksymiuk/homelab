@@ -1,0 +1,38 @@
+---
+samba_users:
+  - name: maxu
+    password: changeme
+    groups: ['maxu', 'media']
+  - name: media
+    password: changeme
+    groups: ['media']
+
+samba_shares:
+  - name: QuickShare
+    path: /mnt/quick-share
+    comment: Quick access share
+    writable: yes
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu,media
+  - name: Media
+    path: /mnt/media
+    comment: Media files
+    writable: yes
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu,media
+  - name: Documents
+    path: /mnt/documents
+    comment: Documents
+    writable: yes
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu
+  - name: DocumentsBackup
+    path: /mnt/documents-backup
+    comment: Documents backup
+    writable: no
+    create_mask: 0775
+    directory_mask: 0775
+    valid_users: maxu,media

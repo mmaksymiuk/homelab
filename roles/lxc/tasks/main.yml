@@ -1,0 +1,122 @@
+---
+- name: Ensure Proxmox API dependencies
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-requests
+    state: present
+    update_cache: yes
+
+- name: Download Debian 13 template
+  ansible.builtin.command: pveam update
+  register: pveam_update
+  changed_when: false
+  failed_when: false
+
+- name: Get available Debian 13 template
+  ansible.builtin.shell: pveam available --section system | grep debian-13 | head -1
+  register: template_info
+  changed_when: false
+
+- name: Download template
+  ansible.builtin.command: pveam download local {{ template_info.stdout.split()[1] }}
+  when: template_info.stdout | length > 0
+  register: template_download
+  failed_when: false
+  changed_when: template_download.changed
+
+- name: Filter container by name
+  ansible.builtin.set_fact:
+    container_to_create: "{{ lxc_containers | selectattr('name', '==', container_filter) | list }}"
+  when: container_filter is defined
+
+- name: Use all containers if no filter
+  ansible.builtin.set_fact:
+    container_to_create: "{{ lxc_containers }}"
+  when: container_filter is not defined
+
+- name: Create LXC container
+  community.general.proxmox:
+    vmid: "{{ item.vmid }}"
+    api_user: root
+    api_host: 127.0.0.1
+    node: proxmox
+    ostype: debian
+    osversion: "{{ item.osversion | default('13') }}"
+    cores: "{{ item.cores }}"
+    memory: "{{ item.memory }}"
+    swap: "{{ item.swap | default(item.memory // 2) }}"
+    rootfs: "{{ lxc_storage }}:{{ item.rootfs | default(4) }}"
+    hostname: "{{ item.name }}"
+    description: "{{ item.description }}"
+    state: present
+    netif: '{"net0":"name=eth0,bridge={{ lxc_bridge }},ip=dhcp,type=veth"}'
+  loop: "{{ container_to_create }}"
+  register: lxc_create
+  failed_when: false
+  when: container_to_create | length > 0
+
+- name: Configure container features
+  ansible.builtin.command: |
+    pct set {{ item.vmid }} --features {% if item.features.nesting is defined and item.features.nesting %}nesting=1{% else %}nesting=0{% endif %}
+  loop: "{{ container_to_create }}"
+  when: container_to_create[0].features is defined
+  register: lxc_features
+  failed_when: false
+  changed_when: false
+
+- name: Configure bind mounts for samba container
+  ansible.builtin.command: |
+    pct exec {{ item.vmid }} -- bash -c "
+      pct set {{ item.vmid }} --mp0 /mnt/fast-storage,mp=/mnt/fast-storage \
+                --mp1 /mnt/quick-share,mp=/mnt/quick-share \
+                --mp2 /mnt/documents,mp=/mnt/documents \
+                --mp3 /mnt/documents-backup,mp=/mnt/documents-backup \
+                --mp4 /mnt/media,mp=/mnt/media
+    "
+  loop: "{{ container_to_create }}"
+  when: container_to_create[0].name == 'samba'
+  register: bind_mounts
+  failed_when: false
+  changed_when: false
+
+- name: Start LXC container
+  ansible.builtin.command: pct start {{ container_to_create[0].vmid }}
+  when: container_to_create | length > 0
+  register: lxc_start
+  failed_when: false
+  changed_when: lxc_start.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.pause:
+    seconds: 15
+  when: container_to_create | length > 0
+
+- name: Configure SSH in container
+  ansible.builtin.command: |
+    pct exec {{ item.vmid }} -- bash -c "
+      apt-get update && apt-get install -y openssh-server sudo curl wget
+      mkdir -p /root/.ssh
+      echo '{{ ssh_key_content.stdout }}' >> /root/.ssh/authorized_keys
+      chmod 700 /root/.ssh
+      chmod 600 /root/.ssh/authorized_keys
+      systemctl enable ssh
+    "
+  loop: "{{ container_to_create }}"
+  register: ssh_config
+  failed_when: false
+  changed_when: ssh_config.changed
+  when: ssh_key_content is defined
+
+- name: Set container password
+  ansible.builtin.command: |
+    pct exec {{ item.vmid }} -- bash -c "echo 'root:changeme' | chpasswd"
+  loop: "{{ container_to_create }}"
+  register: password_set
+  failed_when: false
+  changed_when: false
+
+- name: Display container status
+  ansible.builtin.command: pct list
+  register: container_status
+  changed_when: false

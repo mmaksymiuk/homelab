@@ -1,0 +1,24 @@
+---
+# Run all homelab setup playbooks in sequence
+# Usage: ansible-playbook -i inventory/hosts.ini playbooks/setup-all.yml
+
+- name: Configure disks and storage
+  hosts: homelab
+  become: yes
+  vars:
+    debug: false
+  tasks: []
+
+- name: Configure power management
+  hosts: homelab
+  become: yes
+  vars:
+    debug: false
+  tasks: []
+
+- name: Create LXC containers
+  hosts: homelab
+  become: yes
+  vars:
+    debug: false
+  tasks: []
